@@ -17,9 +17,14 @@ const supabase = createClient(
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 app.use(express.json());
-app.use(cors({
-  origin: ["https://shreynik00.github.io/Test_Supabase_login/"], // adjust if needed
-}));
+const corsOptions = {
+  origin: "https://shreynik00.github.io",  // your GitHub Pages origin
+  methods: ["GET", "POST"],
+  allowedHeaders: ["Content-Type"],
+};
+
+app.use(cors(corsOptions));
+
 
 app.post("/google-login", async (req, res) => {
   const { token } = req.body;
