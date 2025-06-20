@@ -26,28 +26,28 @@ app.use(cors(corsOptions));
 
 // Route: Accept Google login data directly (unsafe)
 app.post("/google-login", async (req, res) => {
-  const { email, name, googleId } = req.body;
+  const { email, username, googleId } = req.body;
 
-  if (!email || !googleId) {
+  if (!email || !username || !googleId) {
     return res.status(400).json({ success: false, message: "Missing fields" });
   }
 
   try {
-    // Save to Supabase
     const { error } = await supabase.from("users").upsert({
       email,
-      username: name,
+      username,
       google_id: googleId,
     });
 
     if (error) throw error;
 
-    res.json({ success: true, message: "User saved", user: { email, name } });
+    res.json({ success: true, message: "User saved", user: { email, username } });
   } catch (error) {
-    console.error("Supabase upsert error:", error);
-    res.status(500).json({ success: false, message: "Login failed" });
+    console.error("Server error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
