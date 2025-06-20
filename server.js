@@ -1,46 +1,39 @@
-require("dotenv").config(); // <-- Add this line at the top
+require("dotenv").config();
 
 const express = require("express");
 const { createClient } = require("@supabase/supabase-js");
-const { OAuth2Client } = require("google-auth-library");
 const cors = require("cors");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Load environment variables
+// Initialize Supabase client
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
 app.use(express.json());
+
+// CORS for GitHub Pages
 const corsOptions = {
-  origin: "https://shreynik00.github.io",  // your GitHub Pages origin
+  origin: "https://shreynik00.github.io", // GitHub Pages origin
   methods: ["GET", "POST"],
   allowedHeaders: ["Content-Type"],
 };
 
 app.use(cors(corsOptions));
 
-
+// Route: Accept Google login data directly (unsafe)
 app.post("/google-login", async (req, res) => {
-  const { token } = req.body;
+  const { email, name, googleId } = req.body;
+
+  if (!email || !googleId) {
+    return res.status(400).json({ success: false, message: "Missing fields" });
+  }
 
   try {
-    const ticket = await googleClient.verifyIdToken({
-      idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
-    const email = payload.email;
-    const name = payload.name;
-    const googleId = payload.sub;
-
-    // Upsert user into Supabase
+    // Save to Supabase
     const { error } = await supabase.from("users").upsert({
       email,
       username: name,
@@ -51,8 +44,8 @@ app.post("/google-login", async (req, res) => {
 
     res.json({ success: true, message: "User saved", user: { email, name } });
   } catch (error) {
-    console.error("Google login failed:", error);
-    res.status(401).json({ success: false, message: "Login failed" });
+    console.error("Supabase upsert error:", error);
+    res.status(500).json({ success: false, message: "Login failed" });
   }
 });
 
