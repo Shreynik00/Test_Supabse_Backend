@@ -69,7 +69,7 @@ app.post("/google-login", async (req, res) => {
 
     // Check if user already exists
     const { data: existingUsers, error: checkError } = await supabase
-      .from("users")
+      .from("Login")
       .select("*")
       .eq("google_id", user.google_id);
 
@@ -78,7 +78,7 @@ app.post("/google-login", async (req, res) => {
     if (existingUsers.length === 0) {
       // Insert new user
       const { error: insertError } = await supabase
-        .from("users")
+        .from("Login")
         .insert([user]);
 
       if (insertError) throw insertError;
