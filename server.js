@@ -24,13 +24,28 @@ const supabase = createClient(
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+const cors = require("cors");
+
+const allowedOrigins = [
+  'https://shreynik00.github.io',
+  'https://accounts.google.com',  // Required for Google Sign-In
+];
 
 app.use(cors({
-  origin: 'https://shreynik00.github.io',
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed from this origin'));
+    }
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
+
+
+app.options('*', cors());
 
 app.use(session({
   secret: 'your-secret-key',
