@@ -1,51 +1,44 @@
 const express = require("express");
-const path = require("path");
+const cors = require("cors");
 const session = require("express-session");
 const { OAuth2Client } = require("google-auth-library");
-const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
-
 require("dotenv").config();
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
-// Google OAuth Client
 const clientt = new OAuth2Client(
-  "190022392096-5vl5tfqup2d8tdtgof9m68phhc8qh77u.apps.googleusercontent.com"
+  process.env.GOOGLE_CLIENT_ID || "190022392096-5vl5tfqup2d8tdtgof9m68phhc8qh77u.apps.googleusercontent.com"
 );
 
-// Supabase Client
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
 
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 
-const allowedOrigins = [
-  'https://shreynik00.github.io',
-  'https://accounts.google.com',  // Required for Google Sign-In
-];
-
-app.use(cors({
+const allowedOrigins = ['https://shreynik00.github.io', 'https://accounts.google.com'];
+const corsOptions = {
   origin: function (origin, callback) {
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('CORS not allowed from this origin'));
+      callback(new Error('CORS not allowed from this origin: ' + origin));
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
-}));
+};
 
-
-app.options('*', cors());
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 app.use(session({
   secret: 'your-secret-key',
