@@ -1,44 +1,36 @@
 const express = require("express");
-const cors = require("cors");
+const path = require("path");
 const session = require("express-session");
 const { OAuth2Client } = require("google-auth-library");
+const cors = require("cors");
 const { createClient } = require("@supabase/supabase-js");
+
 require("dotenv").config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3000;
 
+// Google OAuth Client
 const clientt = new OAuth2Client(
-  process.env.GOOGLE_CLIENT_ID || "190022392096-5vl5tfqup2d8tdtgof9m68phhc8qh77u.apps.googleusercontent.com"
+  "190022392096-5vl5tfqup2d8tdtgof9m68phhc8qh77u.apps.googleusercontent.com"
 );
 
+// Supabase Client
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
-const allowedOrigins = ['https://shreynik00.github.io', 'https://accounts.google.com'];
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS not allowed from this origin: ' + origin));
-    }
-  },
+app.use(cors({
+  origin: 'https://askitindia.github.io',
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
-};
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+}));
 
 app.use(session({
   secret: 'your-secret-key',
@@ -68,7 +60,7 @@ app.post("/google-login", async (req, res) => {
 
     // Check if user already exists
     const { data: existingUsers, error: checkError } = await supabase
-      .from("Login")
+      .from("users")
       .select("*")
       .eq("google_id", user.google_id);
 
@@ -77,7 +69,7 @@ app.post("/google-login", async (req, res) => {
     if (existingUsers.length === 0) {
       // Insert new user
       const { error: insertError } = await supabase
-        .from("Login")
+        .from("users")
         .insert([user]);
 
       if (insertError) throw insertError;
@@ -89,8 +81,6 @@ app.post("/google-login", async (req, res) => {
     res.status(401).json({ success: false, error: "Invalid token" });
   }
 });
-
-
 // Start the server
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
