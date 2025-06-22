@@ -55,9 +55,7 @@ app.post("/google-login", async (req, res) => {
   try {
     const ticket = await clientt.verifyIdToken({
       idToken: token,
-      audience:
-        process.env.GOOGLE_CLIENT_ID ||
-        "190022392096-5vl5tfqup2d8tdtgof9m68phhc8qh77u.apps.googleusercontent.com",
+      audience: process.env.GOOGLE_CLIENT_ID
     });
 
     const payload = ticket.getPayload();
@@ -67,7 +65,6 @@ app.post("/google-login", async (req, res) => {
       email: payload.email,
     };
 
-    // Check if user already exists
     const { data: existingUsers, error: checkError } = await supabase
       .from("Login")
       .select("*")
@@ -75,21 +72,20 @@ app.post("/google-login", async (req, res) => {
 
     if (checkError) throw checkError;
 
-    if (existingUsers.length === 0) {
-      // Insert new user
+    if (!existingUsers.length) {
       const { error: insertError } = await supabase
         .from("Login")
         .insert([user]);
-
       if (insertError) throw insertError;
     }
 
     res.json({ success: true, user });
   } catch (error) {
     console.error("Google login error:", error);
-    res.status(401).json({ success: false, error: "Invalid token" });
+    res.status(401).json({ success: false, message: error.message });
   }
 });
+
 // Start the server
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
