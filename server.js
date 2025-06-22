@@ -1,53 +1,89 @@
+const express = require("express");
+const path = require("path");
+const session = require("express-session");
+const { OAuth2Client } = require("google-auth-library");
+const cors = require("cors");
+const { createClient } = require("@supabase/supabase-js");
+
 require("dotenv").config();
 
-const express = require("express");
-const { createClient } = require("@supabase/supabase-js");
-const cors = require("cors");
-
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = 3000;
 
-// Initialize Supabase client
+// Google OAuth Client
+const clientt = new OAuth2Client(
+  "190022392096-5vl5tfqup2d8tdtgof9m68phhc8qh77u.apps.googleusercontent.com"
+);
+
+// Supabase Client
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+// Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cors({
-    origin: 'https://shreynik00.github.io',
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type']
+  origin: 'https://shreynik00.github.io',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
 }));
 
-// Route: Accept Google login data directly (unsafe)
+app.use(session({
+  secret: 'your-secret-key',
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false, httpOnly: true }
+}));
+
+// ✅ Google Login with Supabase
 app.post("/google-login", async (req, res) => {
+  const { token } = req.body;
+
   try {
-    const { email, username, googleId } = req.body;
+    const ticket = await clientt.verifyIdToken({
+      idToken: token,
+      audience:
+        process.env.GOOGLE_CLIENT_ID ||
+        "190022392096-5vl5tfqup2d8tdtgof9m68phhc8qh77u.apps.googleusercontent.com",
+    });
 
-    if (!email || !username || !googleId) {
-      return res.status(400).json({ success: false, message: "Missing required fields" });
-    }
+    const payload = ticket.getPayload();
+    const user = {
+      google_id: payload.sub,
+      username: payload.name,
+      email: payload.email,
+    };
 
-    const { data, error } = await supabase
+    // Check if user already exists
+    const { data: existingUsers, error: checkError } = await supabase
       .from("users")
-      .upsert({ email, username, google_id: googleId }, { onConflict: ['email'] });
+      .select("*")
+      .eq("google_id", user.google_id);
 
-    if (error) {
-      console.error("Supabase error:", error);
-      return res.status(500).json({ success: false, message: "Database error", error: error.message });
+    if (checkError) throw checkError;
+
+    if (existingUsers.length === 0) {
+      // Insert new user
+      const { error: insertError } = await supabase
+        .from("users")
+        .insert([user]);
+
+      if (insertError) throw insertError;
     }
 
-    res.json({ success: true, message: "User saved", user: data });
+    res.json({ success: true, user });
   } catch (error) {
-    console.error("Unexpected error:", error);
-    res.status(500).json({ success: false, message: "Unexpected server error", error: error.message });
+    console.error("Google login error:", error);
+    res.status(401).json({ success: false, error: "Invalid token" });
   }
 });
 
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
+// Start the server
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
 });
